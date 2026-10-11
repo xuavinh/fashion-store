@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: fashion-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: fashiondb
+      POSTGRES_USER: xuanvinh
+      POSTGRES_PASSWORD: xuanvinh
+    volumes:
+      - postgres_data:/var/lib/portgresql/data
+
+volumes:
+  postgres_data:

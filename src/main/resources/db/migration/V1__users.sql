@@ -1,0 +1,10 @@
+CREATE TABLE users (
+    user_id UUID PRIMARY KEY,
+    email VARCHAR(50) NOT NULL UNIQUE,
+    password_hash TEXT,
+    phone VARCHAR(12),
+    full_name VARCHAR(50),
+    role VARCHAR(50) NOT NULL DEFAULT 'CUSTOMER',
+    status VARCHAR(50) NOT NULL DEFAULT 'INACTIVE',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
