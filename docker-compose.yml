@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: xuanvinh
       POSTGRES_PASSWORD: xuanvinh
     volumes:
-      - postgres_data:/var/lib/portgresql/data
+      - postgres_data:/var/lib/postgresql/data
 
 volumes:
   postgres_data:
