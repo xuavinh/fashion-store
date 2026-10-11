@@ -7,7 +7,8 @@ import lombok.*;
 import java.util.UUID;
 
 
-@Entity(name = "users")
+@Entity
+@Table(name = "users")
 @Getter
 @Setter
 @AllArgsConstructor
@@ -39,4 +40,7 @@ public class User extends BaseEntity {
     @Column(name = "status", nullable = false)
     @Builder.Default
     private UserStatus status = UserStatus.INACTIVE;
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private UserStyleProfile styleProfile;
 }
