@@ -2,6 +2,11 @@ spring:
   application:
     name: fashion-store
 
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 50MB
+
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${POSTGRES_USER}
@@ -22,3 +27,12 @@ app:
     jwt:
       access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:900000}
       refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000}
+
+  storage:
+    s3:
+      endpoint: ${STORAGE_ENDPOINT}
+      bucket-name: ${STORAGE_BUCKET}
+      access-key: ${STORAGE_ACCESS_KEY}
+      secret-key: ${STORAGE_SECRET_KEY}
+      region: ${STORAGE_REGION}
+      public-url: ${STORAGE_PUBLIC_URL}
