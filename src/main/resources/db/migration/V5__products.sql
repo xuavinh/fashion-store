@@ -11,5 +11,27 @@ CREATE TABLE products (
       is_active BOOLEAN NOT NULL DEFAULT TRUE,
       avg_rating NUMERIC(3,2) NOT NULL DEFAULT 0.00,
       total_sold INT NOT NULL DEFAULT 0,
+      search_vector tsvector,
       created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
+CREATE OR REPLACE FUNCTION products_search_vector_update() RETURNS trigger AS $$
+BEGIN
+    NEW.search_vector :=
+        setweight(to_tsvector('simple', unaccent(coalesce(NEW.name, ''))), 'A') ||
+        setweight(to_tsvector('simple', coalesce(NEW.name, '')), 'A') ||
+        setweight(to_tsvector('simple', unaccent(coalesce(NEW.material, ''))), 'B') ||
+        setweight(to_tsvector('simple', coalesce(NEW.material, '')), 'B') ||
+        setweight(to_tsvector('simple', unaccent(coalesce(NEW.description, ''))), 'C') ||
+        setweight(to_tsvector('simple', coalesce(NEW.description, '')), 'C');
+RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_products_search_vector_update ON products;
+CREATE TRIGGER trg_products_search_vector_update
+BEFORE INSERT OR UPDATE ON products
+FOR EACH ROW EXECUTE FUNCTION products_search_vector_update();
+CREATE INDEX IF NOT EXISTS idx_products_search_vector ON products USING GIN(search_vector);
