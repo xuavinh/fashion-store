@@ -1,5 +1,6 @@
 package com.fashion.store.modules.category;
 
+import com.fashion.store.common.domain.BaseEntity;
 import com.fashion.store.modules.product.Product;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
@@ -16,7 +17,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @Builder
 @Table(name = "categories")
-public class Category {
+public class Category extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "category_id", nullable = false, updatable = false)
@@ -30,6 +31,9 @@ public class Category {
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
     @Builder.Default
     private List<Category> subCategories = new ArrayList<>();
+
+    @Column(name = "name", nullable = false, length = 200)
+    private String name;
 
     @Column(name = "slug", nullable = false, unique = true, length = 200)
     private String slug;

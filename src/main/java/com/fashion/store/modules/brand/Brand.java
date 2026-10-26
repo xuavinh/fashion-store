@@ -1,5 +1,6 @@
 package com.fashion.store.modules.brand;
 
+import com.fashion.store.common.domain.BaseEntity;
 import com.fashion.store.modules.product.Product;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
@@ -16,7 +17,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class Brand {
+public class Brand extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "brand_id", nullable = false, updatable = false)
