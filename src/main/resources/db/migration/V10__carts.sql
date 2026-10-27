@@ -16,3 +16,23 @@ CREATE TABLE cart_items (
 );
 
 CREATE INDEX idx_cart_items_cart_id ON cart_items(cart_id);
+
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_carts_updated_at ON carts;
+CREATE TRIGGER trg_carts_updated_at
+    BEFORE UPDATE ON carts
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS trg_cart_items_updated_at ON cart_items;
+CREATE TRIGGER trg_cart_items_updated_at
+    BEFORE UPDATE ON cart_items
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
