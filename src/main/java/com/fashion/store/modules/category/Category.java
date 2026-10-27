@@ -39,9 +39,11 @@ public class Category extends BaseEntity {
     private String slug;
 
     @Column(name = "level", nullable = false)
+    @Builder.Default
     private Short level = 1;
 
     @Column(name = "gender_filter", nullable = false, length = 20)
+    @Builder.Default
     private String genderFilter = "ALL";
 
     @JsonIgnore
