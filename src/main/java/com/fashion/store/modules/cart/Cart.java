@@ -5,7 +5,6 @@ import com.fashion.store.modules.user.User;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.annotation.LastModifiedDate;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -35,7 +34,6 @@ public class Cart extends BaseEntity {
     @Builder.Default
     private List<CartItem> items = new ArrayList<>();
 
-    @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     @Builder.Default
     private OffsetDateTime updatedAt = OffsetDateTime.now();

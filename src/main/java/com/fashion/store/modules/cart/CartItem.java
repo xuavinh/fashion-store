@@ -5,7 +5,6 @@ import com.fashion.store.modules.product.ProductVariant;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.annotation.LastModifiedDate;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -37,7 +36,6 @@ public class CartItem extends BaseEntity {
     @Builder.Default
     private Integer quantity = 1;
 
-    @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     @Builder.Default
     private OffsetDateTime updatedAt = OffsetDateTime.now();
