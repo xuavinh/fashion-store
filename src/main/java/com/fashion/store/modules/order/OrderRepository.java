@@ -41,4 +41,15 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
             @Param("search") String search,
             Pageable pageable
     );
+
+    @Query("SELECT DISTINCT o FROM Order o JOIN o.items i " +
+            "WHERE o.user.userId = :userId " +
+            "AND o.status = :status " +
+            "AND i.variant.product.productId = :productId " +
+            "ORDER BY o.createdAt DESC")
+    java.util.List<Order> findDeliveredOrdersForProduct(
+            @Param("userId") UUID userId,
+            @Param("status") OrderStatus status,
+            @Param("productId") UUID productId
+    );
 }
