@@ -1,6 +1,7 @@
 package com.fashion.store.modules.category;
 
 import com.fashion.store.common.domain.BaseEntity;
+import com.fashion.store.modules.product.Gender;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
@@ -28,12 +29,12 @@ public class SizeGuide extends BaseEntity {
     @JsonIgnore
     private Category category;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "gender", nullable = false, length = 20)
     @Builder.Default
-    private String gender = "UNISEX";
+    private Gender gender = Gender.UNISEX;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "size_chart", columnDefinition = "jsonb", nullable = false)
     private String sizeChart;
-    
 }
