@@ -1,7 +1,6 @@
 package com.fashion.store.modules.order;
 
 import com.fashion.store.common.exception.BadRequestException;
-import com.fashion.store.common.exception.ResourceNotFoundException;
 import com.fashion.store.modules.cart.Cart;
 import com.fashion.store.modules.cart.CartItem;
 import com.fashion.store.modules.cart.CartItemRepository;
@@ -36,9 +35,6 @@ class OrderServiceTest {
     private OrderRepository orderRepository;
 
     @Mock
-    private OrderItemRepository orderItemRepository;
-
-    @Mock
     private CartRepository cartRepository;
 
     @Mock
@@ -53,6 +49,9 @@ class OrderServiceTest {
     @Mock
     private com.fashion.store.modules.user.address.UserAddressRepository userAddressRepository;
 
+    @Mock
+    private com.fashion.store.modules.promotion.VoucherService voucherService;
+
     private OrderService orderService;
 
     private UUID userId;
@@ -66,12 +65,12 @@ class OrderServiceTest {
     void setUp() {
         orderService = new OrderService(
                 orderRepository,
-                orderItemRepository,
                 cartRepository,
                 cartItemRepository,
                 variantRepository,
                 userRepository,
-                userAddressRepository
+                userAddressRepository,
+                voucherService
         );
 
         userId = UUID.randomUUID();
@@ -114,7 +113,7 @@ class OrderServiceTest {
     void checkout_FromCart_Success() {
         OrderDTO.CheckoutRequest request = new OrderDTO.CheckoutRequest(
                 null, "Nguyen Van A", "0912345678", "123 Le Loi, Q1", "TP.HCM", "Quận 1", "Bến Nghé",
-                "Giao giờ hành chính", PaymentMethod.COD, null, null, null
+                "Giao giờ hành chính", PaymentMethod.COD, null, null, null, null
         );
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(sampleUser));
@@ -146,6 +145,39 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("Đặt hàng từ giỏ hàng kèm mã Voucher hợp lệ -> Giảm trừ tiền thành công")
+    void checkout_FromCart_WithVoucher_Success() {
+        OrderDTO.CheckoutRequest request = new OrderDTO.CheckoutRequest(
+                null, "Nguyen Van A", "0912345678", "123 Le Loi, Q1", "TP.HCM", "Quận 1", "Bến Nghé",
+                "Giao giờ hành chính", PaymentMethod.COD, "SUMMER20", null, null, null
+        );
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(sampleUser));
+        when(cartRepository.findWithItemsByUserId(userId)).thenReturn(Optional.of(sampleCart));
+        when(variantRepository.findByIdWithLock(sampleVariant.getVariantId())).thenReturn(Optional.of(sampleVariant));
+        when(voucherService.applyVoucherToOrder(eq(userId), eq("SUMMER20"), any(BigDecimal.class),anyList(), any(Order.class)))
+                .thenAnswer(inv -> {
+                    Order o = inv.getArgument(4);
+                    o.setVoucherCode("SUMMER20");
+                    o.setDiscountAmount(BigDecimal.valueOf(50000));
+                    return BigDecimal.valueOf(50000);
+                });
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> {
+            Order o = inv.getArgument(0);
+            o.setOrderId(UUID.randomUUID());
+            return o;
+        });
+
+        OrderDTO.OrderResponse response = orderService.checkout(userId, request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.voucherCode()).isEqualTo("SUMMER20");
+        assertThat(response.discountAmount()).isEqualByComparingTo(BigDecimal.valueOf(50000));
+        assertThat(response.totalAmount()).isEqualByComparingTo(BigDecimal.valueOf(550000));
+        verify(voucherService).applyVoucherToOrder(eq(userId), eq("SUMMER20"), any(BigDecimal.class), anyList(), any(Order.class));
+    }
+
+    @Test
     @DisplayName("Đặt hàng bằng addressId từ sổ địa chỉ thành công")
     void checkout_WithAddressId_Success() {
         UUID addressId = UUID.randomUUID();
@@ -163,7 +195,7 @@ class OrderServiceTest {
 
         OrderDTO.CheckoutRequest request = new OrderDTO.CheckoutRequest(
                 addressId, null, null, null, null, null, null,
-                "Giao nhanh", PaymentMethod.COD, null, null, null
+                "Giao nhanh", PaymentMethod.COD, null, null, null, null
         );
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(sampleUser));
@@ -189,7 +221,8 @@ class OrderServiceTest {
     void checkout_EmptyCart_ThrowsBadRequestException() {
         sampleCart.getItems().clear();
         OrderDTO.CheckoutRequest request = new OrderDTO.CheckoutRequest(
-                null, "Nguyen Van A", "0912345678", "123 Le Loi", null, null, null, null, null, null, null, null
+                null, "Nguyen Van A", "0912345678", "123 Le Loi", null, null, null, null,
+                PaymentMethod.COD, null, null, null, null
         );
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(sampleUser));
@@ -207,7 +240,8 @@ class OrderServiceTest {
     void checkout_StockExceeded_ThrowsBadRequestException() {
         sampleVariant.setStockQty(1); // Chỉ còn 1 sản phẩm mà giỏ đòi 2
         OrderDTO.CheckoutRequest request = new OrderDTO.CheckoutRequest(
-                null, "Nguyen Van A", "0912345678", "123 Le Loi", null, null, null, null, null, null, null, null
+                null, "Nguyen Van A", "0912345678", "123 Le Loi", null, null, null, null,
+                PaymentMethod.COD, null, null, null, null
         );
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(sampleUser));
@@ -360,7 +394,7 @@ class OrderServiceTest {
         // Khách chỉ tick chọn sampleCartItem, KHÔNG chọn item2
         OrderDTO.CheckoutRequest request = new OrderDTO.CheckoutRequest(
                 null, "Nguyen Van A", "0912345678", "123 Le Loi", "TP.HCM", "Q1", "Ben Nghe",
-                "Chi giao mon da chon", PaymentMethod.COD, null, null,
+                "Chi giao mon da chon", PaymentMethod.COD, null, null, null,
                 List.of(sampleCartItem.getItemId())
         );
 
@@ -377,7 +411,7 @@ class OrderServiceTest {
 
         assertThat(response).isNotNull();
         assertThat(response.items()).hasSize(1);
-        assertThat(response.items().get(0).skuCode()).isEqualTo("POLO-BLK-L");
+        assertThat(response.items().getFirst().skuCode()).isEqualTo("POLO-BLK-L");
 
         // Đảm bảo item2 vẫn còn lại trong giỏ hàng (không bị xóa)
         assertThat(sampleCart.getItems()).contains(item2);
@@ -391,7 +425,7 @@ class OrderServiceTest {
     void checkout_CodBlockedWhenReturnedCountExceedsLimit() {
         OrderDTO.CheckoutRequest request = new OrderDTO.CheckoutRequest(
                 null, "Nguyen Van A", "0912345678", "123 Le Loi", null, null, null, null,
-                PaymentMethod.COD, null, null, null
+                PaymentMethod.COD, null, null, null, null
         );
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(sampleUser));

@@ -88,6 +88,12 @@ public class Order extends BaseEntity {
     @Builder.Default
     private List<OrderItem> items = new ArrayList<>();
 
+    @Column(name = "voucher_id")
+    private UUID voucherId;
+
+    @Column(name = "voucher_code", length = 50)
+    private String voucherCode;
+
     @Column(name = "updated_at", nullable = false)
     @Builder.Default
     private OffsetDateTime updatedAt = OffsetDateTime.now();

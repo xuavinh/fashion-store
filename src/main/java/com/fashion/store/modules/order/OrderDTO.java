@@ -1,6 +1,5 @@
 package com.fashion.store.modules.order;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -34,6 +33,8 @@ public class OrderDTO {
             String note,
 
             PaymentMethod paymentMethod,
+
+            String voucherCode,
 
             // Dùng khi khách bấm "Mua ngay" không qua giỏ hàng
             UUID buyNowVariantId,
@@ -84,6 +85,7 @@ public class OrderDTO {
             BigDecimal subtotal,
             BigDecimal shippingFee,
             BigDecimal discountAmount,
+            String voucherCode,
             BigDecimal totalAmount,
             List<OrderItemResponse> items,
             OffsetDateTime createdAt,

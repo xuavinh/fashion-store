@@ -10,6 +10,8 @@ import com.fashion.store.modules.product.Product;
 import com.fashion.store.modules.product.ProductImage;
 import com.fashion.store.modules.product.ProductVariant;
 import com.fashion.store.modules.product.ProductVariantRepository;
+import com.fashion.store.modules.promotion.VoucherDTO;
+import com.fashion.store.modules.promotion.VoucherService;
 import com.fashion.store.modules.user.User;
 import com.fashion.store.modules.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -40,12 +42,12 @@ public class OrderService {
     public static final BigDecimal STANDARD_SHIPPING_FEE = BigDecimal.valueOf(30000); // Phí ship chuẩn 30k
 
     private final OrderRepository orderRepository;
-    private final OrderItemRepository orderItemRepository;
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
     private final ProductVariantRepository variantRepository;
     private final UserRepository userRepository;
     private final UserAddressRepository userAddressRepository;
+    private final VoucherService voucherService;
 
     private static final String CODE_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -191,8 +193,25 @@ public class OrderService {
         }
 
         Order savedOrder = orderRepository.save(order);
-        log.info("Đặt hàng thành công: orderCode={}, userId={}, total={}", orderCode, userId, totalAmount);
 
+        // Áp dụng Voucher giảm giá
+        BigDecimal discountAmount = BigDecimal.ZERO;
+        if (request.voucherCode() != null && !request.voucherCode().isBlank()) {
+            List<VoucherDTO.CartItemTargetInfo> targetItems = orderItems.stream()
+                    .map(item -> new VoucherDTO.CartItemTargetInfo(
+                            item.getVariant().getProduct().getProductId(),
+                            item.getVariant().getProduct().getCategory() != null ? item.getVariant().getProduct().getCategory().getCategoryId() : null,
+                            item.getSubtotal()
+                    ))
+                    .toList();
+            discountAmount = voucherService.applyVoucherToOrder(userId, request.voucherCode(), subtotal, targetItems, savedOrder);
+            totalAmount = subtotal.subtract(discountAmount).max(BigDecimal.ZERO).add(shippingFee);
+            savedOrder.setDiscountAmount(discountAmount);
+            savedOrder.setTotalAmount(totalAmount);
+            savedOrder = orderRepository.save(savedOrder);
+        }
+
+        log.info("Đặt hàng thành công: orderCode={}, userId={}, total={}", orderCode, userId, totalAmount);
         // Nếu đặt hàng từ giỏ hàng -> Xóa các sản phẩm đã thanh toán
         if (fromCart) {
             Cart cart = cartRepository.findWithItemsByUserId(userId).orElse(null);
@@ -200,7 +219,7 @@ public class OrderService {
                 if (request.selectedCartItemIds() != null && !request.selectedCartItemIds().isEmpty()) {
                     List<CartItem> itemsToRemove = cart.getItems().stream()
                             .filter(i -> request.selectedCartItemIds().contains(i.getItemId()))
-                            .collect(Collectors.toList());
+                            .toList();
 
                     for (CartItem item : itemsToRemove) {
                         cart.getItems().remove(item);
@@ -270,6 +289,8 @@ public class OrderService {
                 variantRepository.save(variant);
             }
         }
+        // Hoàn lại lượt sử dụng Voucher (nếu có áp dụng)
+        voucherService.rollbackVoucherUsage(order.getOrderId());
 
         order.setStatus(OrderStatus.CANCELLED);
         if (reason != null && !reason.isBlank()) {
@@ -314,11 +335,17 @@ public class OrderService {
                     variantRepository.save(variant);
                 }
             }
+            if (newStatus == OrderStatus.CANCELLED) {
+                voucherService.rollbackVoucherUsage(order.getOrderId());
+            }
         }
 
-        // Nếu đơn hàng COD được giao thành công -> Tự động chuyển paymentStatus sang PAID
-        if (newStatus == OrderStatus.DELIVERED && order.getPaymentMethod() == PaymentMethod.COD) {
-            order.setPaymentStatus(PaymentStatus.PAID);
+        // Nếu đơn hàng COD được giao thành công -> Tự động chuyển paymentStatus sang PAID & chốt sử dụng voucher
+        if (newStatus == OrderStatus.DELIVERED) {
+            voucherService.confirmVoucherUsage(order.getOrderId());
+            if (order.getPaymentMethod() == PaymentMethod.COD) {
+                order.setPaymentStatus(PaymentStatus.PAID);
+            }
         }
 
         // Nếu hàng hoàn về kho (RETURNED) và khách đã từng thanh toán trước -> Chuyển sang REFUNDED
@@ -401,6 +428,7 @@ public class OrderService {
                 .subtotal(order.getSubtotal())
                 .shippingFee(order.getShippingFee())
                 .discountAmount(order.getDiscountAmount())
+                .voucherCode(order.getVoucherCode())
                 .totalAmount(order.getTotalAmount())
                 .items(itemResponses)
                 .createdAt(order.getCreatedAt())
@@ -444,7 +472,7 @@ public class OrderService {
             }
         }
 
-        return product.getImages().get(0).getUrl();
+        return product.getImages().getFirst().getUrl();
     }
 
     private ShippingInfo resolveShippingInfo(UUID userId, User user, OrderDTO.CheckoutRequest request) {
